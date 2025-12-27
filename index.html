@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片字幕生成器</title>
+  <style>
+    :root {
+      --card-bg: #ffffff;
+      --card-border: #e5e7eb;
+      --card-radius: 12px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      --primary: #2563eb;
+      --primary-press: #1e40af;
+      --green: #22c55e;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Source Han Sans SC", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: #f3f4f6;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .card h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .field { margin-bottom: 12px; }
+    .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input[type="number"], input[type="text"], input[type="color"], select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      outline: none;
+      font-size: 14px;
+      background: #fff;
+    }
+    input[type="file"] {
+      width: 100%;
+    }
+    textarea {
+      height: 140px;
+      resize: vertical;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:active { background: var(--primary-press); }
+    .btn-secondary {
+      background: #fff;
+      border-color: #d1d5db;
+      color: var(--text);
+    }
+    .preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 520px;
+      background: #f8fafc;
+      border: 1px dashed #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: var(--green);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      font-size: 14px;
+      display: none;
+    }
+    .file-name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .preview { height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">图片字幕生成器</div>
+    <div class="grid">
+      <div class="card">
+        <h3>上传图片</h3>
+        <div class="field">
+          <input id="fileInput" type="file" accept="image/*">
+          <div id="fileName" class="file-name"></div>
+        </div>
+        <h3>字幕设置</h3>
+        <div class="row">
+          <div class="field">
+            <div class="label">字幕高度（px）</div>
+            <input id="subtitleHeight" type="number" min="10" max="300" value="80">
+          </div>
+          <div class="field">
+            <div class="label">字体大小（px）</div>
+            <input id="fontSize" type="number" min="10" max="200" value="40">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">字体颜色</div>
+            <input id="fontColor" type="color" value="#ffffff">
+          </div>
+          <div class="field">
+            <div class="label">轮廓颜色</div>
+            <input id="strokeColor" type="color" value="#000000">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">字体样式</div>
+            <select id="fontFamily">
+              <option value="Microsoft YaHei">微软雅黑</option>
+              <option value="PingFang SC">苹方</option>
+              <option value="Source Han Sans SC">思源黑体</option>
+              <option value="Noto Sans SC">Noto Sans SC</option>
+              <option value="Arial">Arial</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="label">字体粗细</div>
+            <select id="fontWeight">
+              <option value="400">正</option>
+              <option value="500">中</option>
+              <option value="700">粗</option>
+            </select>
+          </div>
+        </div>
+        <h3>字幕内容</h3>
+        <div class="field">
+          <textarea id="subtitleText" placeholder="每行一段字幕，使用换行分隔"></textarea>
+        </div>
+        <div class="actions">
+          <button id="generateBtn" class="btn btn-primary">生成字幕图片</button>
+          <button id="saveBtn" class="btn btn-secondary">保存图片</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>预览</h3>
+        <div class="preview">
+          <canvas id="canvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast">图片生成成功！</div>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const subtitleHeightInput = document.getElementById('subtitleHeight');
+    const fontSizeInput = document.getElementById('fontSize');
+    const fontColorInput = document.getElementById('fontColor');
+    const strokeColorInput = document.getElementById('strokeColor');
+    const fontFamilyInput = document.getElementById('fontFamily');
+    const fontWeightInput = document.getElementById('fontWeight');
+    const subtitleText = document.getElementById('subtitleText');
+    const generateBtn = document.getElementById('generateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const canvas = document.getElementById('canvas');
+    const toast = document.getElementById('toast');
+
+    const state = {
+      image: null,
+      imageName: '',
+      subtitleHeight: 80,
+      fontSize: 40,
+      fontColor: '#ffffff',
+      strokeColor: '#000000',
+      fontFamily: 'Microsoft YaHei',
+      fontWeight: '400',
+      lineGap: 8,
+      bottomPadding: 24,
+      barWidthRatio: 0.9,
+      lastBlobUrl: null
+    };
+
+    function showToast() {
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 1500);
+    }
+
+    function readSettings() {
+      state.subtitleHeight = Math.max(10, Math.min(300, parseInt(subtitleHeightInput.value || '80', 10)));
+      state.fontSize = Math.max(10, Math.min(200, parseInt(fontSizeInput.value || '40', 10)));
+      state.fontColor = fontColorInput.value || '#ffffff';
+      state.strokeColor = strokeColorInput.value || '#000000';
+      state.fontFamily = fontFamilyInput.value || 'Microsoft YaHei';
+      state.fontWeight = fontWeightInput.value || '400';
+    }
+
+    function splitToRows(ctx, text, maxWidth, fontSize) {
+      const lineHeight = fontSize * 1.2;
+      const rows = [];
+      let current = '';
+      const units = [];
+      let i = 0;
+      while (i < text.length) {
+        const ch = text[i];
+        if (ch === ' ' || ch === '-' || ch === '\t') {
+          units.push(ch);
+          i++;
+          continue;
+        }
+        let j = i;
+        while (j < text.length && text[j] !== ' ' && text[j] !== '-' && text[j] !== '\t') j++;
+        const token = text.slice(i, j);
+        units.push(token);
+        i = j;
+      }
+      for (const u of units) {
+        const test = current + u;
+        const w = ctx.measureText(test).width;
+        if (w <= maxWidth) {
+          current = test;
+        } else {
+          if (current.trim().length > 0) rows.push(current.trim());
+          current = u.trim();
+          if (ctx.measureText(current).width > maxWidth) {
+            let acc = '';
+            for (const c of current) {
+              const w2 = ctx.measureText(acc + c).width;
+              if (w2 <= maxWidth) acc += c; else { rows.push(acc); acc = c; }
+            }
+            current = acc;
+          }
+        }
+      }
+      if (current.trim().length > 0) rows.push(current.trim());
+      return { rows, lineHeight };
+    }
+
+    function renderPreview() {
+      if (!state.image) return;
+      readSettings();
+      const img = state.image;
+      const dpr = window.devicePixelRatio || 1;
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.naturalWidth * dpr;
+      canvas.height = img.naturalHeight * dpr;
+      canvas.style.width = img.naturalWidth + 'px';
+      canvas.style.height = img.naturalHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, img.naturalWidth, img.naturalHeight);
+      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+      const lines = subtitleText.value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+      if (lines.length === 0) return;
+      const barWidth = Math.floor(img.naturalWidth * state.barWidthRatio);
+      const barX = Math.floor((img.naturalWidth - barWidth) / 2);
+      const totalHeight = lines.length * state.subtitleHeight + (lines.length - 1) * state.lineGap;
+      let yStart = img.naturalHeight - state.bottomPadding - totalHeight;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `${state.fontWeight} ${state.fontSize}px "${state.fontFamily}", sans-serif`;
+      for (let index = 0; index < lines.length; index++) {
+        const yTop = yStart + index * (state.subtitleHeight + state.lineGap);
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(barX, yTop, barWidth, state.subtitleHeight);
+        ctx.restore();
+        const innerPadding = 24;
+        const textMaxWidth = barWidth - innerPadding * 2;
+        const measureCtx = ctx;
+        const res = splitToRows(measureCtx, lines[index], textMaxWidth, state.fontSize);
+        const blockHeight = res.rows.length * res.lineHeight;
+        const yCenter = yTop + state.subtitleHeight / 2;
+        const yTextStart = yCenter - blockHeight / 2 + res.lineHeight / 2;
+        ctx.lineWidth = Math.max(1, Math.round(state.fontSize / 20) * 2);
+        ctx.strokeStyle = state.strokeColor;
+        ctx.fillStyle = state.fontColor;
+        for (let r = 0; r < res.rows.length; r++) {
+          const txt = res.rows[r];
+          const yPos = yTextStart + r * res.lineHeight;
+          ctx.strokeText(txt, barX + barWidth / 2, yPos, textMaxWidth);
+          ctx.fillText(txt, barX + barWidth / 2, yPos, textMaxWidth);
+        }
+      }
+    }
+
+    function generateImage() {
+      if (!state.image) return;
+      const lines = subtitleText.value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+      if (lines.length === 0) return;
+      renderPreview();
+      showToast();
+    }
+
+    function saveImage() {
+      if (!state.image) return;
+      renderPreview();
+      canvas.toBlob(b => {
+        if (!b) return;
+        if (state.lastBlobUrl) URL.revokeObjectURL(state.lastBlobUrl);
+        const url = URL.createObjectURL(b);
+        state.lastBlobUrl = url;
+        const a = document.createElement('a');
+        const base = state.imageName ? state.imageName.replace(/\.[^/.]+$/, '') : 'image';
+        a.download = `${base}_subtitle_${Date.now()}.png`;
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, 'image/png');
+    }
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        state.image = img;
+        state.imageName = file.name;
+        fileName.textContent = file.name;
+        renderPreview();
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
+
+    [subtitleHeightInput, fontSizeInput, fontColorInput, strokeColorInput, fontFamilyInput, fontWeightInput, subtitleText].forEach(el => {
+      el.addEventListener('input', () => {
+        renderPreview();
+      });
+    });
+    generateBtn.addEventListener('click', generateImage);
+    saveBtn.addEventListener('click', saveImage);
+  </script>
+</body>
+</html>
